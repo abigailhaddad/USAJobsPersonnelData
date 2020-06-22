@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from collections import Counter
 import re
-
+import operator
 
 def connect(authorization_key):
     #passes key to the API
@@ -99,7 +99,7 @@ def allKeywords():
     listOfRoles=listOfRoles+ ["spark", "java"]
     return(listOfRoles)
     
-def combineMultipleSearches(authorization_key):
+def searchByKeywordList(authorization_key):
     #this pulls all of the relevant listings with the basic keywords and drops dups
     dfDict={}
     for word in basicKeywords():
@@ -136,31 +136,17 @@ def exportOutput(directory, df1):
     df1.to_excel(directory + f"\\results\\output_{date}.xlsx")
     #df2.to_excel(directory + f"\\results\\comparison_group_{date}.xlsx")
 
-def countOccsOverall(authorization_key, occPresent):
-    #pulls from the API all of the listings for each of the occupations in the data listings
-    dfDict={}
-    for occ in occPresent:
-        dfDict[occ]=current_search(authorization_key, JobCategoryCode=occ)
-        dfDict[occ]['JobSearched']=occ
-    dfAll=pd.concat(dfDict.values())
-    dfAll=cleanInitialDF(dfAll)
-    print(len(dfAll))
-    return(dfAll)
     
 def main(directory):   
     #pulls from the API, cleans, pulls from the actual listings, looks for full keywords
     authorization_key=getLogin(directory)
-    df=combineMultipleSearches(authorization_key)
+    df=searchByKeywordList(authorization_key)
     dfClean=cleanInitialDF(df)
     dfSoup=pullTextSoup(dfClean)
     dfVars=cleanVarsInSoup(dfSoup)
     justSelect=moreCleaningText(dfVars)
     updateVars=[i for i in allKeywords() if i in justSelect.columns]
     justSelect['Sum of Keywords']=justSelect[updateVars].sum(axis=1)
-    #occsPresent=list(justSelect['Code'].unique())
-    #print(occsPresent)
-    #occsOverall=countOccsOverall(authorization_key, occsPresent)
-    #print(len(occsOverall))
     exportOutput(directory, justSelect)
     return(justSelect)
     
@@ -191,59 +177,114 @@ def metrics(directory, outputData):
     publicjobs=len(outputData.loc[outputData['Public']=="public"])
     print(f"{publicjobs} jobs were advertised to the public")
     keywordGraph(directory, outputData)
+       
+def stockPhrasesDelete():
+    stockPhrases=['unsaved data', 'data will','act data', 'data opens', 'https data', 'data usajobs']
+    return(stockPhrases)
     
-    
-def pull301s(directory):
-    authorization_key=getLogin(directory)
-    occ301=current_search(authorization_key, JobCategoryCode="0301", terms="")
-    dfSoup=pullTextSoup(occ301)
-    return(dfSoup)
-    
+def findNgrams(input_list, n):
+  return(zip(*[input_list[i:] for i in range(n)]))   
 
-directory=r'C:\Users\HaddadAE\Git Repos\personnel'
+def makeNgramsFromText(text, phrase, n):
+    stockPhrases=stockPhrasesDelete()
+    words = re.findall(r'[A-Za-z]+', text.lower())
+    nGrams= findNgrams(words, n)
+    counts = Counter(nGrams)
+    selectNgrams=[" ".join(list(i[0])) for i in counts.most_common() if phrase in [i][0][0]]  
+    remainingNgrams=[i for i in selectNgrams if i not in stockPhrases]
+    return(remainingNgrams)
+    
+def dictionaryOfGrams():
+    dictOfGrams={1: "words", 2: "bigrams", 3: "trigrams"}
+    return(dictOfGrams)
+  
+def textGrams(df, phrase, n):
+    df['ngrams']=pd.Series([makeNgramsFromText(i, phrase, n) for i in df['textSoup']])
+    nonBlanks=df[df['ngrams'].astype(bool)]['ngrams']
+    return(df['ngrams'], nonBlanks)
+
+def keywordGraphDict(directory, outputData, thresshold):
+    #count of keywords
+    date=str(datetime.date(datetime.now()))
+    plt.rcdefaults()
+    fig, ax = plt.subplots()
+    dictKeysSort=dict(sorted(outputData.items(), key=operator.itemgetter(1), reverse=True)[:thresshold])
+    y_pos = np.arange(len(dictKeysSort.keys()))
+    ax.barh(y_pos, list(dictKeysSort.values()), align='center')
+    ax.set_yticks(y_pos)
+    ax.set_yticklabels(list(dictKeysSort.keys()))
+    ax.invert_yaxis()  # labels read top-to-bottom
+    ax.set_xlabel('Count')
+    ax.set_title(f'Top {thresshold} Data Bigrams')
+    plt.tight_layout()
+    plt.savefig(directory + f'\\results\\KeywordCount_{date}.png')
+
+def basicDataPull(directory, JobCategoryCode, terms, phrase, n):
+    authorization_key=getLogin(directory)
+    df=current_search(authorization_key, JobCategoryCode=JobCategoryCode, terms=terms)
+    dfSoup=pullTextSoup(df)
+    dfSoup['ngrams'], nonBlanks=textGrams(dfSoup, phrase, n)
+    print(len(nonBlanks))
+    counts=getTopNgrams(dfSoup['ngrams'])
+    return(dfSoup, counts)
+
+def getTopNgrams(series):
+    flat_list = [item for sublist in series for item in sublist]
+    counts = Counter(flat_list)
+    return(counts)
+    
+inputsData={"directory":r'C:\Users\HaddadAE\Git Repos\personnel', 
+               "JobCategoryCode":"",
+               "terms":"data scientist",
+               "phrase":"data",
+               "n":2}
+
+dfData, dataPhraseCounts=basicDataPull(**inputsData)
+keywordGraphDict(directory, dataPhraseCounts, 10)
+#
+#
+
+#keywordGraphDict(directory, counts, 10)
+#excelAds=pullExcel()
+#excelPhrasesDF=excelPhrases(excelAds)
+
+#flat_list = [item for sublist in excelPhrasesDF for item in sublist]
+#counts = Counter(flat_list)
+#keywordGraphDict(directory, counts, 10)
+
+#flat_list = [item for sublist in excelPhrasesDF for item in sublist]
+#counts = Counter(flat_list)
+
+#words = re.findall(r'[A-Za-z]+', excelAds['textSoup'].iloc[0].lower())
+#n = 3
+
+#def find_ngrams(input_list, n):
+#  return zip(*[input_list[i:] for i in range(n)])
+
+#zipped=find_ngrams(words , 3)
+#counts = Counter(zipped)
+
+
+
+#directory=r'C:\Users\HaddadAE\Git Repos\personnel'
 #outputData=main(directory)   
 #metrics(directory, outputData)
-occ301=pull301s(directory)
-def stockData():
-    stockDataPhrases=['unsaved data', 'data will','act data', 'data opens', 'https data', 'data usajobs']
-    return(stockDataPhrases)
-    
-def makeDataBigrams(text):
-    stockDataPhrases=stockData()
-    words = re.findall(r'[A-Za-z]+', text.lower())
-    bigrams = zip(words, words[1:])
-    counts = Counter(bigrams)
-    data=[" ".join(list(i[0])) for i in counts.most_common() if [i][0][0][0]=="data" or[i][0][0][1]=="data"]  
-    noStockData=[i for i in data if i not in stockDataPhrases]
-    return(noStockData)
-    
-def makeAllDataBigrams(series):
-    output=series.apply(makeDataBigrams)    
-    return(output)
-    
-occ301['dataBigrams']= makeAllDataBigrams(occ301['textSoup'])
-flat_list = [item for sublist in occ301['dataBigrams'] for item in sublist]
-counts = Counter(flat_list)
 
-#   
-
-"""
 #829 
 
 
 #pull agency list
-from io import StringIO
-response = requests.get("https://data.usajobs.gov/api/codelist/agencysubelements")
-jdata = json.loads(response.content)
-agencyList=pd.DataFrame.from_dict(jdata['CodeList'][0]['ValidValue'])
-Army=agencyList.loc[agencyList['Value'].str.contains("Army")]
+#from io import StringIO
+#response = requests.get("https://data.usajobs.gov/api/codelist/agencysubelements")
+#jdata = json.loads(response.content)
+#agencyList=pd.DataFrame.from_dict(jdata['CodeList'][0]['ValidValue'])
+#Army=agencyList.loc[agencyList['Value'].str.contains("Army")]
 
 
 #pull occ list
 
-response = requests.get("https://data.usajobs.gov/api/codelist/occupationalseries")
-jdata = json.loads(response.content)
-OccList=pd.DataFrame.from_dict(jdata['CodeList'][0]['ValidValue'])
-Ops=OccList.loc[OccList['Value'].str.contains("Operations Research")]
-"""
+#response = requests.get("https://data.usajobs.gov/api/codelist/occupationalseries")
+#jdata = json.loads(response.content)
+#OccList=pd.DataFrame.from_dict(jdata['CodeList'][0]['ValidValue'])
+#Ops=OccList.loc[OccList['Value'].str.contains("Operations Research")]
 
