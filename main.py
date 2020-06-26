@@ -14,6 +14,50 @@ import numpy as np
 from collections import Counter
 import re
 import operator
+import time
+
+def dataStock():
+    dataStockPhrases=['data and',
+                      'and data',
+                      'data to',
+                      'of data',
+                      'data for',
+                      'data from',
+                      'data in',
+                      'data is',
+                      'accurate data',
+                      'pertinent data',
+                      'data into',
+                      'data pertaining',
+                      'or data',
+                      'for data',
+                      'data effectively',
+                      'data provide',
+                      'the data',
+                      'data on',
+                      'data travel',
+                      'data used',
+                      'data this',
+                      'data you',
+                      'data files',
+                      'needed data',
+                      'data or',
+                      'data such',
+                      'this data',
+                      'data with',
+                      'data title',
+                      'data which',
+                      'data between']
+    return(dataStockPhrases)
+
+    
+def otherWordRules(phrase):
+    if "data" in phrase and "analy" in phrase:
+        return("data analysis-all variations")
+    elif "data" in phrase and "scien" in phrase:
+        return("data science")
+    else:
+        return(phrase)
 
 def connect(authorization_key):
     #passes key to the API
@@ -74,6 +118,8 @@ def pullActualListing(url):
     #pulls all html as text
     response = requests.get(url)
     soup = BeautifulSoup(response.text, 'html')
+    time.sleep(.3)
+    print("slept")
     return(soup.text)
 
 def pullTextSoup(df):
@@ -90,7 +136,8 @@ def basicKeywords():
                           "tableau", "linux", "hadoop", "azure",
                           "kafka", "nosql", "amazon web services", 
                           "hive", "scala", "qlik", "dashboards", 
-                          "data visualization"]
+                          "data visualization", "matlab", "data mining", 
+                          "excel", "vba", "visual basic", "artificial intelligence"]
     return(listOfRolesandSkills)
 
 def allKeywords():
@@ -134,9 +181,7 @@ def exportOutput(directory, df1):
     #outputs all of the results with the current date
     date=str(datetime.date(datetime.now()))
     df1.to_excel(directory + f"\\results\\output_{date}.xlsx")
-    #df2.to_excel(directory + f"\\results\\comparison_group_{date}.xlsx")
 
-    
 def main(directory):   
     #pulls from the API, cleans, pulls from the actual listings, looks for full keywords
     authorization_key=getLogin(directory)
@@ -165,7 +210,9 @@ def keywordGraph(directory, outputData):
     ax.set_yticklabels(list(dictKeysSort.keys()))
     ax.invert_yaxis()  # labels read top-to-bottom
     ax.set_xlabel('Count')
-    ax.set_title('Count of Data Listings With The Following Keyword')
+    ax.set_title('Count of Data Listings With The Following Keyword: 6-25-2020')
+    for i in range(len(keywords)):
+        plt.annotate(str(list(dictKeysSort.values())[i]), xy=(list(dictKeysSort.values())[i],y_pos[i]))
     plt.tight_layout()
     plt.savefig(directory + f'\\results\\KeywordCount_{date}.png')
     
@@ -179,35 +226,42 @@ def metrics(directory, outputData):
     keywordGraph(directory, outputData)
        
 def stockPhrasesDelete():
-    stockPhrases=['unsaved data', 'data will','act data', 'data opens', 'https data', 'data usajobs']
-    return(stockPhrases)
+    stockPhrases=['unsaved data', 'data will','act data', 'data opens', 'https data', 'data usajobs', 'to excel', 'excel prepare']
+    stockPhrasesAll=stockPhrases+dataStock()
+    return(stockPhrasesAll)
     
 def findNgrams(input_list, n):
-  return(zip(*[input_list[i:] for i in range(n)]))   
+  return(zip(*[input_list[m:] for m in range(n)]))   
 
+def wordsNotWords():
+    deleteStrings=["li", "n", "ul", "br", "r", "t"]
+    return(deleteStrings)
 def makeNgramsFromText(text, phrase, n):
     stockPhrases=stockPhrasesDelete()
     words = re.findall(r'[A-Za-z]+', text.lower())
-    nGrams= findNgrams(words, n)
+    deleteStrings=wordsNotWords()
+    cleanWords=[i for i in words if i not in deleteStrings]
+    nGrams= findNgrams(cleanWords, n)
     counts = Counter(nGrams)
-    selectNgrams=[" ".join(list(i[0])) for i in counts.most_common() if phrase in [i][0][0]]  
-    remainingNgrams=[i for i in selectNgrams if i not in stockPhrases]
-    return(remainingNgrams)
+    selectNgrams=[" ".join(list(l[0])) for l in counts.most_common() if phrase in [l][0][0]]  
+    remainingNgrams=[k for k in selectNgrams if k not in stockPhrases]
+    otherWordRuleNGrams=list(set([otherWordRules(i) for i in remainingNgrams]))
+    return( otherWordRuleNGrams)
+    
     
 def dictionaryOfGrams():
     dictOfGrams={1: "words", 2: "bigrams", 3: "trigrams"}
     return(dictOfGrams)
   
 def textGrams(df, phrase, n):
-    df['ngrams']=pd.Series([makeNgramsFromText(i, phrase, n) for i in df['textSoup']])
-    nonBlanks=df[df['ngrams'].astype(bool)]['ngrams']
-    return(df['ngrams'], nonBlanks)
+    textGramOutput=pd.Series([makeNgramsFromText(i, phrase, n) for i in df['textSoup']])
+    return(textGramOutput)
 
-def keywordGraphDict(directory, outputData, thresshold):
+def keywordGraphDict(directory, outputData, thresshold, titleText):
     #count of keywords
     date=str(datetime.date(datetime.now()))
     plt.rcdefaults()
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(7,thresshold/4))
     dictKeysSort=dict(sorted(outputData.items(), key=operator.itemgetter(1), reverse=True)[:thresshold])
     y_pos = np.arange(len(dictKeysSort.keys()))
     ax.barh(y_pos, list(dictKeysSort.values()), align='center')
@@ -215,33 +269,78 @@ def keywordGraphDict(directory, outputData, thresshold):
     ax.set_yticklabels(list(dictKeysSort.keys()))
     ax.invert_yaxis()  # labels read top-to-bottom
     ax.set_xlabel('Count')
-    ax.set_title(f'Top {thresshold} Data Bigrams')
+    ax.set_title(titleText)
     plt.tight_layout()
-    plt.savefig(directory + f'\\results\\KeywordCount_{date}.png')
-
-def basicDataPull(directory, JobCategoryCode, terms, phrase, n):
-    authorization_key=getLogin(directory)
-    df=current_search(authorization_key, JobCategoryCode=JobCategoryCode, terms=terms)
-    dfSoup=pullTextSoup(df)
-    dfSoup['ngrams'], nonBlanks=textGrams(dfSoup, phrase, n)
-    print(len(nonBlanks))
-    counts=getTopNgrams(dfSoup['ngrams'])
-    return(dfSoup, counts)
+    for i in range(thresshold):
+        plt.annotate(str(list(dictKeysSort.values())[i]), xy=(list(dictKeysSort.values())[i],y_pos[i]))
+    plt.savefig(directory + f'\\results\\{titleText}_{date}.png')
 
 def getTopNgrams(series):
     flat_list = [item for sublist in series for item in sublist]
     counts = Counter(flat_list)
     return(counts)
+
+def basicDataPull(directory, JobCategoryCode, terms, phrase, n):
+    authorization_key=getLogin(directory)
+    df=current_search(authorization_key, JobCategoryCode=JobCategoryCode, terms=terms)
+    dfSoup=pullTextSoup(df)
+    ngramOutput=textGrams(dfSoup, phrase, n)
+    counts=getTopNgrams(ngramOutput)
+    blanks=len(ngramOutput[~ngramOutput.astype(bool).astype(bool)])
+    print(f'{blanks} blanks and {len(df)} total listings')
+    return(dfSoup, ngramOutput, counts)
     
-inputsData={"directory":r'C:\Users\HaddadAE\Git Repos\personnel', 
-               "JobCategoryCode":"",
-               "terms":"data scientist",
+    
+inputs0301={"directory":r'C:\Users\HaddadAE\Git Repos\personnel', 
+               "JobCategoryCode":"0301",
+               "terms":"",
                "phrase":"data",
                "n":2}
 
-dfData, dataPhraseCounts=basicDataPull(**inputsData)
-keywordGraphDict(directory, dataPhraseCounts, 10)
-#
+inputsExcel={"directory":r'C:\Users\HaddadAE\Git Repos\personnel', 
+               "JobCategoryCode":"",
+               "terms":"excel",
+               "phrase":"excel",
+               "n":2}
+
+inputsData={"directory":r'C:\Users\HaddadAE\Git Repos\personnel', 
+               "JobCategoryCode":"",
+               "terms":"data",
+               "phrase":"data",
+               "n":2}
+
+directory=r'C:\Users\HaddadAE\Git Repos\personnel'
+"""
+df0301Data, df0301ngram, df0301PhraseCounts=basicDataPull(**inputs0301)
+keywordGraphDict(directory, df0301PhraseCounts, 10, "Top 10 Data Bigrams From 0301 Search")
+
+ExcelData, Excelngram, ExcelPhraseCounts=basicDataPull(**inputsExcel)
+keywordGraphDict(directory, ExcelPhraseCounts, 10, "Top 10 Excel Bigrams From All Army Search")
+#keywordGraphDict(directory, dataPhraseCounts, 10)
+
+dfDataScience=main(directory)
+"""
+def addAsk(i, aList):
+    if i in aList:
+        return("*"+i)
+    else:
+        return(i)
+        
+def allTheKeys(df):
+    allKeywordsReturn=allKeywords() 
+    allKeywordsReturn.sort()
+    absentKeywords = [i for i in allKeywords() if i not in df.columns]
+    fixedList=[addAsk(i, absentKeywords) for i in allKeywordsReturn]
+    return(fixedList)
+
+dataData, datangram, DataPhraseCounts=basicDataPull(**inputsData)
+keywordGraphDict(directory,  DataPhraseCounts, 20, "Top 20 Data Bigrams From Army Civilian Listings: 6-25-2020")
+allDataScienceKeys=main(directory)
+
+allKeys=allTheKeys(allDataScienceKeys)
+#New=[otherWordRules(i) for i in DataPhraseCounts.keys()]
+#NewDict= dict(zip(New, DataPhraseCounts.values()))
+#DataPhraseCounts=NewDict
 #
 
 #keywordGraphDict(directory, counts, 10)
@@ -266,7 +365,7 @@ keywordGraphDict(directory, dataPhraseCounts, 10)
 
 
 
-#directory=r'C:\Users\HaddadAE\Git Repos\personnel'
+#
 #outputData=main(directory)   
 #metrics(directory, outputData)
 
