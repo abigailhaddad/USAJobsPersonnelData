@@ -358,7 +358,7 @@ def produceListOfKeywords(df):
     #this produces the list of keywords for appendix B, including which ones were found
     listOfKeywords=allTheKeys(df)
     return(listOfKeywords)
-
+"""
 dataData, datangram, DataPhraseCounts=produceDataBigrams(**inputsData)
 
 allDataScienceKeys=produceDataKeywords(directory)
@@ -366,3 +366,4 @@ allDataScienceKeys=produceDataKeywords(directory)
 keywordGraph(directory, allDataScienceKeys)
 keywords=produceListOfKeywords(allDataScienceKeys)
 
+"""
