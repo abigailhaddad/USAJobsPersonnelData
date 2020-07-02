@@ -52,7 +52,11 @@ def dataStock():
                       'data with',
                       'data title',
                       'data which',
-                      'data between']
+                      'data between',
+                      "submit data",
+                      "related data",
+                      "data submit",
+                      "a data"]
     return(dataStockPhrases)
 
     
@@ -83,6 +87,7 @@ def current_search(authorization_key, JobCategoryCode="", terms=""):
     #formats url and makes request to API
     number=str(1)
     base_url=f"https://data.usajobs.gov/api/search?Organization=AR&JobCategoryCode={JobCategoryCode}&Keyword={terms}&WhoMayApply=All&p="
+    print(base_url)
     df_fixed=pd.DataFrame()
     results = requests.get(base_url+number, headers=connect(authorization_key)).json()
     df_fixed=format_dict(results, df_fixed)
@@ -91,6 +96,8 @@ def current_search(authorization_key, JobCategoryCode="", terms=""):
                 number=str(int(number)+1)      
                 results = requests.get(base_url+number, headers=connect(authorization_key)).json()
                 df_fixed=format_dict(results, df_fixed)
+    #dfArmy=df_fixed.loc[df_fixed['DepartmentName']=="Department of the Army"]
+    #return(dfArmy)
     return(df_fixed)
 
 def openToPublic(df):
@@ -253,7 +260,7 @@ def makeNgramsFromText(text, phrase, n):
     cleanWords=[i for i in words if i not in deleteStrings]
     nGrams= findNgrams(cleanWords, n)
     counts = Counter(nGrams)
-    selectNgrams=[" ".join(list(l[0])) for l in counts.most_common() if phrase in [l][0][0]]  
+    selectNgrams=[" ".join(list(l[0])) for l in counts.most_common() if any(item in [l][0][0] for item in phrase)]  
     remainingNgrams=[k for k in selectNgrams if k not in stockPhrases]
     otherWordRuleNGrams=list(set([otherWordRules(i) for i in remainingNgrams]))
     return( otherWordRuleNGrams)
@@ -335,18 +342,15 @@ def allTheKeys(df):
     return(fixedList)
 
  
-directory=r'C:\Users\HaddadAE\Git Repos\personnel'
 
-inputsData={"directory":r'C:\Users\HaddadAE\Git Repos\personnel', 
-               "JobCategoryCode":"",
-               "terms":"data",
-               "phrase":"data",
-               "n":2}
+
+
+
 
 def produceDataBigrams(**inputsData):
     #this gets all the "data" postings and cleans them for the first chart
     dataData, datangram, DataPhraseCounts=basicDataPull(**inputsData)
-    keywordGraphDict(directory,  DataPhraseCounts, 20, "Top 20 Data Bigrams From Army Civilian Listings: 6-25-2020")
+    keywordGraphDict(inputsData["directory"],  DataPhraseCounts, 20, "Top 20 Data Bigrams From Army Civilian Listings: 6-25-2020")
     return(dataData, datangram, DataPhraseCounts)
     
 def produceDataKeywords(directory):
@@ -358,12 +362,30 @@ def produceListOfKeywords(df):
     #this produces the list of keywords for appendix B, including which ones were found
     listOfKeywords=allTheKeys(df)
     return(listOfKeywords)
-"""
-dataData, datangram, DataPhraseCounts=produceDataBigrams(**inputsData)
 
-allDataScienceKeys=produceDataKeywords(directory)
 
-keywordGraph(directory, allDataScienceKeys)
-keywords=produceListOfKeywords(allDataScienceKeys)
+def paperFirstDraft():
 
-"""
+
+    
+    inputsData={"directory":r'C:\Users\HaddadAE\Git Repos\personnel', 
+               "JobCategoryCode":"",
+               "terms":"data",
+               "phrase":"data",
+               "n":2}
+    directory=r'C:\Users\HaddadAE\Git Repos\personnel'
+    dataData, datangram, DataPhraseCounts=produceDataBigrams(**inputsData)
+    allDataScienceKeys=produceDataKeywords(directory)
+    keywordGraph(directory, allDataScienceKeys)
+    keywords=produceListOfKeywords(allDataScienceKeys)
+    
+def paper301Addition():
+    Data301={"directory":r'C:\Users\HaddadAE\Git Repos\personnel', 
+               "JobCategoryCode":"0301",
+               "terms":"",
+               "phrase":["data", "army"],
+               "n":2}
+    results301, ngram301, DataPhraseCounts301=produceDataBigrams(**Data301)
+    return(results301, ngram301, DataPhraseCounts301)
+     
+results301, ngram301, DataPhraseCounts301=paper301Addition()

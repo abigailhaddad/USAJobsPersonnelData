@@ -125,4 +125,5 @@ justSelect['Sum of Keywords']=justSelect[updateVars].sum(axis=1)
 keywordGraph(directory, justSelect)
 
 
-
+topValue=dfTest['Job Title'].value_counts().head(1).index[0]
+dfTest.loc[dfTest['Job Title']==topValue]
