@@ -4,9 +4,11 @@ Created on Fri Jun 12 07:27:10 2020
 This pulls from the USAJobs API and then scrapes the web pages for additional text to look for 
 data science/data engineering-related keywords, as well as more general 
 
-This is the verion as of 6/26/2020, which was used for:
+An earlier verion was as of 6/26/2020, which was used for:
     USAJobs Army Civilian Job Listings and Mentions of Data and Data Skills 
-    
+
+This version is as of 7/2/2020, which adds the 0301 graph addition. There are also some minor code changes
+    the most significant of this is that you can search for multiple words (like 'excel' and 'data' in ngrams to be shown on the chart)
 @author: HaddadAE
 """
 import requests
@@ -87,7 +89,6 @@ def current_search(authorization_key, JobCategoryCode="", terms=""):
     #formats url and makes request to API
     number=str(1)
     base_url=f"https://data.usajobs.gov/api/search?Organization=AR&JobCategoryCode={JobCategoryCode}&Keyword={terms}&WhoMayApply=All&p="
-    print(base_url)
     df_fixed=pd.DataFrame()
     results = requests.get(base_url+number, headers=connect(authorization_key)).json()
     df_fixed=format_dict(results, df_fixed)
@@ -276,23 +277,23 @@ def textGrams(df, phrase, n):
     textGramOutput=pd.Series([makeNgramsFromText(i, phrase, n) for i in df['textSoup']])
     return(textGramOutput)
 
-def keywordGraphDict(directory, outputData, thresshold, titleText):
+def keywordGraphDict(outputData, directory, JobCategoryCode, terms, phrase, n, ngramNumber, chartTitle):
     #this takes the full df, thresshold for the top n words/phrases, and the title to show and outputs a chart
     date=str(datetime.date(datetime.now()))
     plt.rcdefaults()
-    fig, ax = plt.subplots(figsize=(7,thresshold/4))
-    dictKeysSort=dict(sorted(outputData.items(), key=operator.itemgetter(1), reverse=True)[:thresshold])
+    fig, ax = plt.subplots(figsize=(7,ngramNumber/4))
+    dictKeysSort=dict(sorted(outputData.items(), key=operator.itemgetter(1), reverse=True)[:ngramNumber])
     y_pos = np.arange(len(dictKeysSort.keys()))
     ax.barh(y_pos, list(dictKeysSort.values()), align='center')
     ax.set_yticks(y_pos)
     ax.set_yticklabels(list(dictKeysSort.keys()))
     ax.invert_yaxis()  # labels read top-to-bottom
     ax.set_xlabel('Count')
-    ax.set_title(titleText)
+    ax.set_title(chartTitle)
     plt.tight_layout()
-    for i in range(thresshold):
+    for i in range(ngramNumber):
         plt.annotate(str(list(dictKeysSort.values())[i]), xy=(list(dictKeysSort.values())[i],y_pos[i]))
-    plt.savefig(directory + f'\\results\\{titleText}_{date}.png')
+    plt.savefig(directory + f'\\results\\{chartTitle}_{date}.png')
 
 def getTopNgrams(series):
     #takes list of lists of phrases, flattens, gets counts of each
@@ -300,7 +301,7 @@ def getTopNgrams(series):
     counts = Counter(flat_list)
     return(counts)
 
-def basicDataPull(directory, JobCategoryCode, terms, phrase, n):
+def basicDataPull(directory, JobCategoryCode, terms, phrase, n, ngramNumber, chartTitle):
     #this does a data pull from usajobs and gets both data from the API and scrapes the pages
     authorization_key=getLogin(directory)
     df=current_search(authorization_key, JobCategoryCode=JobCategoryCode, terms=terms)
@@ -341,16 +342,10 @@ def allTheKeys(df):
     fixedList=[addAsk(i, absentKeywords) for i in allKeywordsReturn]
     return(fixedList)
 
- 
-
-
-
-
-
 def produceDataBigrams(**inputsData):
     #this gets all the "data" postings and cleans them for the first chart
     dataData, datangram, DataPhraseCounts=basicDataPull(**inputsData)
-    keywordGraphDict(inputsData["directory"],  DataPhraseCounts, 20, "Top 20 Data Bigrams From Army Civilian Listings: 6-25-2020")
+    keywordGraphDict(DataPhraseCounts, **inputsData)
     return(dataData, datangram, DataPhraseCounts)
     
 def produceDataKeywords(directory):
@@ -365,27 +360,32 @@ def produceListOfKeywords(df):
 
 
 def paperFirstDraft():
-
-
-    
     inputsData={"directory":r'C:\Users\HaddadAE\Git Repos\personnel', 
                "JobCategoryCode":"",
                "terms":"data",
-               "phrase":"data",
-               "n":2}
+               "phrase":["data"],
+               "n":2,
+               "ngramNumber": 20,
+               "chartTitle": "Top 20 Data Bigrams from Army Civilian Listings"}
+    
     directory=r'C:\Users\HaddadAE\Git Repos\personnel'
     dataData, datangram, DataPhraseCounts=produceDataBigrams(**inputsData)
     allDataScienceKeys=produceDataKeywords(directory)
     keywordGraph(directory, allDataScienceKeys)
     keywords=produceListOfKeywords(allDataScienceKeys)
+    print(keywords)
     
-def paper301Addition():
+def paper0301Addition():
     Data301={"directory":r'C:\Users\HaddadAE\Git Repos\personnel', 
                "JobCategoryCode":"0301",
                "terms":"",
-               "phrase":["data", "army"],
-               "n":2}
+               "phrase":["data", "excel"],
+               "n":2,
+               "ngramNumber": 20,
+               "chartTitle": "Top 20 Data Bigrams from Army 0301 Civilian Listings: 7-2-2020"}
+    
     results301, ngram301, DataPhraseCounts301=produceDataBigrams(**Data301)
-    return(results301, ngram301, DataPhraseCounts301)
+    print(len(results301))
      
-results301, ngram301, DataPhraseCounts301=paper301Addition()
+paper0301Addition()
+paperFirstDraft()
