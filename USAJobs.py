@@ -13,8 +13,6 @@ This version is as of 7/2/2020, which adds the 0301 graph addition. There are al
 """
 import requests
 import pandas as pd
-from bs4 import BeautifulSoup
-from datetime import datetime
 import matplotlib.pyplot as plt
 import numpy as np
 from collections import Counter
@@ -22,6 +20,13 @@ import re
 import operator
 import time
 import json
+import urllib.request
+from wordcloud import WordCloud, STOPWORDS, ImageColorGenerator
+from datetime import date, datetime, timedelta
+from bs4 import BeautifulSoup, Comment
+
+
+plt.rcParams["font.family"] = "Times New Roman"
 
 def dataStock():
     dataStockPhrases=['data and',
@@ -129,14 +134,42 @@ def cleanInitialDF(df):
 
 def pullActualListing(url):
     #pulls all html as text; pauses because otherwise the USAJobs site will break this 
-    response = requests.get(url)
-    soup = BeautifulSoup(response.text, 'html')
+    html = urllib.request.urlopen(url).read() 
+    soup = BeautifulSoup(html, 'html.parser')
+    texts = soup.findAll(text=True)
+    visible_texts = filter(tag_visible, texts) 
     time.sleep(.3)
-    return(soup.text)
+    return u" ".join(t.strip() for t in visible_texts)
 
+    
+    
+
+def tag_visible(element):
+    #thank you stackexchange
+    if element.parent.name in ['style', 'script', 'head', 'title', 'meta', '[document]']:
+        return(False)
+    if isinstance(element, Comment):
+        return(False)
+    return(True)
+
+def pullResponsibilities(string):
+    try:
+        #return(re.search('Responsibilities(.*)Travel Required', string).group(1))
+        return(string.split("Responsibilities")[1].split("Travel Required")[0])
+    except:
+        return()
+    
+def pullQualifications(string):
+    try:
+        return( re.search('Who May Apply(.*)Background checks and security clearance', string).group(1))
+    except:
+        return()
+        
 def pullTextSoup(df):
     #calls pullActualListing on whole series of URLs
     df['textSoup']=df['PositionURI'].apply(pullActualListing)
+    df['responsibilities']=df['textSoup'].apply(pullResponsibilities)
+    df['qualifications']=df['textSoup'].apply(pullQualifications)
     return(df)
     
 def basicKeywords():
@@ -261,10 +294,15 @@ def makeNgramsFromText(text, phrase, n):
     cleanWords=[i for i in words if i not in deleteStrings]
     nGrams= findNgrams(cleanWords, n)
     counts = Counter(nGrams)
-    selectNgrams=[" ".join(list(l[0])) for l in counts.most_common() if any(item in [l][0][0] for item in phrase)]  
+    if len(phrase)>0:
+        selectNgrams=[" ".join(list(l[0])) for l in counts.most_common() if any(item in [l][0][0] for item in phrase)]  
+    else:
+        selectNgrams=[" ".join(list(l[0])) for l in counts.most_common()]  
     remainingNgrams=[k for k in selectNgrams if k not in stockPhrases]
     otherWordRuleNGrams=list(set([otherWordRules(i) for i in remainingNgrams]))
     return( otherWordRuleNGrams)
+
+        
     
     
 def dictionaryOfGrams():
@@ -272,9 +310,9 @@ def dictionaryOfGrams():
     dictOfGrams={1: "words", 2: "bigrams", 3: "trigrams"}
     return(dictOfGrams)
   
-def textGrams(df, phrase, n):
+def textGrams(df, col, phrase, n):
     #gets series of all relevant phrases of length n with word "phrase" in them from df column 'textSoup'
-    textGramOutput=pd.Series([makeNgramsFromText(i, phrase, n) for i in df['textSoup']])
+    textGramOutput=pd.Series([makeNgramsFromText(i, phrase, n) for i in df[col]])
     return(textGramOutput)
 
 def keywordGraphDict(outputData, directory, JobCategoryCode, terms, phrase, n, ngramNumber, chartTitle):
@@ -306,7 +344,7 @@ def basicDataPull(directory, JobCategoryCode, terms, phrase, n, ngramNumber, cha
     authorization_key=getLogin(directory)
     df=current_search(authorization_key, JobCategoryCode=JobCategoryCode, terms=terms)
     dfSoup=pullTextSoup(df)
-    ngramOutput=textGrams(dfSoup, phrase, n)
+    ngramOutput=textGrams(dfSoup, 'textSoup', phrase, n)
     counts=getTopNgrams(ngramOutput)
     blanks=len(ngramOutput[~ngramOutput.astype(bool).astype(bool)])
     print(f'{blanks} blanks and {len(df)} total listings')
@@ -387,5 +425,77 @@ def paper0301Addition():
     results301, ngram301, DataPhraseCounts301=produceDataBigrams(**Data301)
     print(len(results301))
      
+    
+def differentExperiment():
+    dataORSA={"directory":r'C:\Users\HaddadAE\Git Repos\personnel', 
+               "JobCategoryCode":"1515"}
+    authorization_key=getLogin(dataORSA['directory'])
+    df=current_search(authorization_key, JobCategoryCode=dataORSA['JobCategoryCode'])
+    dfSoup=pullTextSoup(df)
+    return(dfSoup)
+
+
+def getAllGrams(text, n):
+    stockPhrases=stockPhrasesDelete()
+    words = re.findall(r'[A-Za-z]+', text.lower())
+    deleteStrings=wordsNotWords()
+    cleanWords=[i for i in words if i not in deleteStrings]
+    nGrams= findNgrams(cleanWords, n)
+    counts = Counter(nGrams)
+    selectNgrams=[" ".join(list(l[0])) for l in counts.most_common()]  
+    remainingNgrams=[k for k in selectNgrams if k not in stockPhrases]
+    otherWordRuleNGrams=list(set([otherWordRules(i) for i in remainingNgrams]))
+    return( otherWordRuleNGrams)
+    
+def allTextGrams(df,  n):
+    #gets series of all relevant phrases of length n with word "phrase" in them from df column 'textSoup'
+    textGramOutput=pd.Series([getAllGrams(i, n) for i in df['textSoup']])
+    return(textGramOutput)
+
+
+
+def worldCloud(freqDict, title):
+    wordcloud = WordCloud(width=1600, height=800, background_color='white', colormap='summer')
+    wordcloud.generate_from_frequencies(frequencies=freqDict)
+    plt.figure()
+    plt.imshow(wordcloud, interpolation="bilinear")
+    plt.axis("off")
+    plt.show()
+    wordcloud.to_file(title+".png")
+    
+def exceptIn(dict1, dict2):
+    dictfilt = lambda x, y: dict([ (i,x[i]) for i in x if i in set(y) ])
+    dict1Except=[i for i in dict1.keys() if i not in dict2.keys()]
+    newDict=dictfilt(dict1, dict1Except)
+    return(newDict)
+    
+def controlGroup():
+    control={"directory":r'C:\Users\HaddadAE\Git Repos\personnel', 
+               "JobCategoryCode":"0081;0185;0640;0950;1035;1152;1601;1910;2003;2161;2604;5048",         
+               "terms":"",
+               "phrase":[],
+               "n":1,
+               "ngramNumber": 20,
+               "chartTitle": "Top 20 Control Bigrams"}
+    
+    resultsControl, ngramControl, phraseCountscontrol=basicDataPull(**control)
+    return(resultsControl, ngramControl, phraseCountscontrol)
+    
+def makeWordCloud(df, column, phrase, gramNum, totalNum, title, exclusions=[]):
+    dictfilt = lambda x, y: dict([ (i,x[i]) for i in x if i in set(y) ])
+    ngramOutput=textGrams(df, column, phrase,gramNum)
+    counts=getTopNgrams(ngramOutput)
+    dict1Except=[i for i in counts.keys() if i not in STOPWORDS and i not in exclusions]
+    newDict=dictfilt(counts, dict1Except)
+    dictKeysSort={k: v for k, v in sorted(newDict.items(), key=lambda item: item[1], reverse=True)[:totalNum]}
+    worldCloud(dictKeysSort, title)
+"""
 paper0301Addition()
 paperFirstDraft()
+orsas=differentExperiment()
+resultsControl, ngramControl, phraseCountscontrol=controlGroup()
+
+
+makeWordCloud(orsas, 'responsibilities', "", 1, 100, "100 ORSA Responsibily Phrases")
+makeWordCloud(orsas, 'qualifications', "", 1, 100, "100 ORSA Qualifications Phrases",  phraseCountscontrol.keys())
+"""
