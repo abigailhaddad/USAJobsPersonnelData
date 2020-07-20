@@ -9,6 +9,9 @@ An earlier verion was as of 6/26/2020, which was used for:
 
 This version is as of 7/2/2020, which adds the 0301 graph addition. There are also some minor code changes
     the most significant of this is that you can search for multiple words (like 'excel' and 'data' in ngrams to be shown on the chart)
+
+This also has some wordcloud capabilities which aren't currently being used on any drafts
+
 @author: HaddadAE
 """
 import requests
@@ -489,9 +492,10 @@ def makeWordCloud(df, column, phrase, gramNum, totalNum, title, exclusions=[]):
     newDict=dictfilt(counts, dict1Except)
     dictKeysSort={k: v for k, v in sorted(newDict.items(), key=lambda item: item[1], reverse=True)[:totalNum]}
     worldCloud(dictKeysSort, title)
-"""
+
 paper0301Addition()
 paperFirstDraft()
+"""
 orsas=differentExperiment()
 resultsControl, ngramControl, phraseCountscontrol=controlGroup()
 
