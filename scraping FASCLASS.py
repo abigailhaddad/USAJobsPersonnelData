@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Created on Mon Jul 20 12:37:50 2020
+This pulls data scientist and engineer listings from FASCLASS
 
 @author: HaddadAE
 """
@@ -105,3 +106,4 @@ def main():
     return(df)
 
 df=main()
+df.to_excel("Data Scientist and Engineer PDs.xlsx")
