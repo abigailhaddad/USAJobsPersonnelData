@@ -221,20 +221,21 @@ def cleanTitleMore(string):
     if "-" in string:
         string=string.split("-")[0]
         string=" ".join(string.split(" ")[0:-1])
-        return(string)
+    return(string)
         
 def extractFields(soups):
     #gets specific fields based on text setup
     df=pd.DataFrame()
+    df['fullText']=soups
     df['Job title']=[soup.split("Replaces PD#:")[1].split("Opt")[0].split("Organization Title")[0] for soup in soups]
     df['PD #']=[soup.split("PD#:")[1].split("Sequence#:")[0] for soup in soups]
     df['Sequence #']=[soup.split("Sequence#")[1].split("Replaces PD#")[0] for soup in soups]
     df['Position Duties']=[soup.split("POSITION DUTIES:")[1].split("NOTICE TO SUPERVISORS:")[0] for soup in soups]
     df['POSITION EVALUATION']=[soup.split("POSITION EVALUATION:")[1].split("***Final classification based")[0] for soup in soups]
-    df['Job title']=df.apply(lambda row: replace(row['Job title'], row['PD #']), axis=1)
-    df['Job title']=df['Job title'].apply(cleanTitleMore)
     for col in df.columns:
         df[col]=df[col].str.strip()
+    df['Job title']=df.apply(lambda row: replace(row['Job title'], row['PD #']), axis=1)
+    df['Job title']=df['Job title'].apply(cleanTitleMore)
     return(df)
                           
 def pullFromLinks(links):
@@ -251,3 +252,5 @@ def main():
 
 df=main()
 df.to_excel("Data Scientist and Engineer PDs.xlsx")
+
+
