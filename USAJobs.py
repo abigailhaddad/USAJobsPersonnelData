@@ -69,21 +69,36 @@ def getLogin(directory):
     authorization_key = open(directory.replace("code","key/authorization_key.txt"), "r").read()
     return(authorization_key)
 
+def makeListsDups(df):
+    df=df.reset_index(drop=True)
+    for column in df.columns:
+        if list in [type(i) for i in df[column].values]:
+            df[column]=df[column].str.join(",")
+    print(len(df))
+    dfNoDups=df.drop_duplicates()
+    print(len(dfNoDups))
+    return(df)
+
 def main(keyword, positiontitle):
     directory = os.getcwd()
     authorization_key=getLogin(directory)
     df=current_search(authorization_key, keyword, positiontitle)
     dfExtended=pullFieldsFromDict(df)
-    dfExtended.to_excel(os.getcwd().replace("code", "data\currentResults.xlsx"))
-    return(dfExtended)
+    dfNoDups=makeListsDups(dfExtended)
+    dfNoDups.to_excel(os.getcwd().replace("code", "data\currentResults.xlsx"))
+    return(dfNoDups)
 
-keyword=""
+keyword="data"
 positiontitle="data scientist"
+positiontitle=""
 df=main(keyword, positiontitle)
-# 2,475 seems like the max results. 
+
 """
 directory = os.getcwd()
 authorization_key=getLogin(directory)
 df_old=historical_search(authorization_key)
 dfExtended=pullFieldsFromDict(df_old)
 """
+
+#df.loc[df['PositionTitle'].str.upper().str.contains("DATA SCIENT")]
+
