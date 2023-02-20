@@ -40,13 +40,13 @@ def unpackColumnDict(df, column):
 
 def pullFieldsFromDict(df):
     # we're unpacking the dictionaries in the returned JSON
-    # we keep any column if it's filled in for at least a quarter of the rows
-    # we skip hiring path because we want that as a column
+    # we keep any column if it's filled in for at least 10% of the rows
+    # only want to unpack dictionaries
     for iteration in range(0, 10):
         for column in df.columns:
-            if column!="HiringPath":
+            if dict in [type(i) for i in df[column].values]:
                 df=unpackColumnDict(df, column)
-        df=df.dropna(thresh=round(len(df)/4), axis=1)
+        df=df.dropna(thresh=round(len(df)/10), axis=1)
     return(df)
      
 def getLogin(directory):
