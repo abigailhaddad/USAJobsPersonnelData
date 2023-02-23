@@ -6,6 +6,7 @@ small, new version that just pulls from the updated USAJobs API
 import requests
 import pandas as pd
 import os
+from datetime import date, timedelta
 
 
 def connect(authorization_key):
@@ -16,18 +17,13 @@ def connect(authorization_key):
     return headers
 
     
-def historical_search(authorization_key):
+def historical_search(authorization_key, start_date, end_date):
     #formats url and makes request to API
-    number=str(0) 
-    base_url=f"https://data.usajobs.gov/api/historicjoa?PositionSeries=2210&PageNumber={number}"
+    # this will just get 1,000
+    number=str(1) 
+    base_url=f'https://data.usajobs.gov/api/historicjoa?PageSize=1000&StartPositionOpenDate={start_date}&EndPositionOpenDate={end_date}&PageNumber={number}'
     results = requests.get(base_url, headers=connect(authorization_key)).json()
     searchResultDF= pd.DataFrame.from_dict(results['data'])
-    if len(searchResultDF) == 25:
-            while results['data']!= 0:
-                number=str(int(number)+1)      
-                results = requests.get(base_url+number, headers=connect(authorization_key)).json()
-                newDF=pd.DataFrame.from_dict(results['data'])
-                searchResultDF=pd.concat([searchResultDF, newDF])
     return(searchResultDF)
 
 def current_search(authorization_key, keyword="", positiontitle=""):
@@ -70,6 +66,9 @@ def getLogin(directory):
     return(authorization_key)
 
 def makeListsDups(df):
+    # this might be dropping not actual dups if we pulled columns that we're dropping because they were 
+    # mostly empty
+    # we might or might not actually want to do this
     df=df.reset_index(drop=True)
     for column in df.columns:
         if list in [type(i) for i in df[column].values]:
@@ -77,7 +76,7 @@ def makeListsDups(df):
     print(len(df))
     dfNoDups=df.drop_duplicates()
     print(len(dfNoDups))
-    return(df)
+    return(dfNoDups)
 
 def main(keyword, positiontitle):
     directory = os.getcwd()
@@ -88,17 +87,46 @@ def main(keyword, positiontitle):
     dfNoDups.to_excel(os.getcwd().replace("code", "data\currentResults.xlsx"))
     return(dfNoDups)
 
-keyword="data"
-positiontitle="data scientist"
-positiontitle=""
-df=main(keyword, positiontitle)
+def format_date(string):
+    return(string[5:7]+"-"+string[8:10]+"-"+string[0:4])
 
-"""
+def genHistoricalData():
+    df=pd.DataFrame()
+    dates=pd.date_range(date(2023,1,1),date(2023,2,1)-timedelta(days=1),freq='d')
+    for i in range(0, len(dates)-1):
+        start_date=format_date(str(dates[i]))
+        end_date=format_date(str(dates[i+1]))
+        try:
+            newDF=historical_search(authorization_key, start_date, end_date)
+            df=pd.concat([df, newDF], axis=1)
+            print(len(newDF))
+        except:
+            print(start_date)
+    return(df)
+
 directory = os.getcwd()
 authorization_key=getLogin(directory)
+df=genHistoricalData()
+    
+
+"""
+keyword="data"
+keyword=""
+positiontitle="data scientist"
+#positiontitle=""
+df=main(keyword, positiontitle)
+
+
+
+
 df_old=historical_search(authorization_key)
-dfExtended=pullFieldsFromDict(df_old)
+#dfExtended=pullFieldsFromDict(df_old)
+
+
+for the historical search, I'm getting 9,000 results (which seems like it should be) 10,000?
+and it's going back to 2016, which is pretty far!
+we could narrow this down via position title and just scrape those
+or we could scrape EVERYTHING
 """
 
-#df.loc[df['PositionTitle'].str.upper().str.contains("DATA SCIENT")]
 
