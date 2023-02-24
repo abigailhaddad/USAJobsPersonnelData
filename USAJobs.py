@@ -15,21 +15,21 @@ def connect(authorization_key):
  'Host': 'data.usajobs.gov',
  'User-Agent': 'abigail.haddad@gmail.com'}
     return headers
-
     
-def historical_search(authorization_key, start_date, end_date):
+def historical_search(start_date, end_date):
     #formats url and makes request to API
     # this will just get 1,000
     number=str(1) 
     base_url=f'https://data.usajobs.gov/api/historicjoa?PageSize=1000&StartPositionOpenDate={start_date}&EndPositionOpenDate={end_date}&PageNumber={number}'
-    results = requests.get(base_url, headers=connect(authorization_key)).json()
+    results = requests.get(base_url).json()
     searchResultDF= pd.DataFrame.from_dict(results['data'])
     return(searchResultDF)
 
-def current_search(authorization_key, keyword="", positiontitle=""):
+def current_search(authorization_key, keyword="", positiontitle="", organization=""):
     #formats url and makes request to API
     number=str(0) 
-    base_url=f"https://data.usajobs.gov/api/search?PositionTitle={positiontitle}&Keyword={keyword}&?WhoMayApply=All&p={number}"
+    #base_url=f"https://data.usajobs.gov/api/search?PositionTitle={positiontitle}&Keyword={keyword}&Organization={organization}?WhoMayApply=All&p={number}"
+    base_url=f"https://data.usajobs.gov/api/Search?Organization={organization}&PositionTitle={positiontitle}&Keyword={keyword}&p={number}"
     results = requests.get(base_url, headers=connect(authorization_key)).json()
     searchResultDF= pd.DataFrame.from_dict(results['SearchResult']['SearchResultItems'])
     if len(searchResultDF) == 25:
@@ -57,7 +57,8 @@ def pullFieldsFromDict(df):
         for column in df.columns:
             if dict in [type(i) for i in df[column].values]:
                 df=unpackColumnDict(df, column)
-        df=df.dropna(thresh=round(len(df)/10), axis=1)
+        #df=df.dropna(thresh=round(len(df)/10), axis=1)
+        df=df.dropna(how='all', axis=1)
     return(df)
      
 def getLogin(directory):
@@ -78,10 +79,10 @@ def makeListsDups(df):
     print(len(dfNoDups))
     return(dfNoDups)
 
-def main(keyword, positiontitle):
+def current_search_all_steps(keyword, positiontitle, organization):
     directory = os.getcwd()
     authorization_key=getLogin(directory)
-    df=current_search(authorization_key, keyword, positiontitle)
+    df=current_search(authorization_key, keyword, positiontitle, organization)
     dfExtended=pullFieldsFromDict(df)
     dfNoDups=makeListsDups(dfExtended)
     dfNoDups.to_excel(os.getcwd().replace("code", "data\currentResults.xlsx"))
@@ -97,36 +98,34 @@ def genHistoricalData():
         start_date=format_date(str(dates[i]))
         end_date=format_date(str(dates[i+1]))
         try:
-            newDF=historical_search(authorization_key, start_date, end_date)
+            newDF=historical_search(start_date, end_date)
             df=pd.concat([df, newDF], axis=1)
             print(len(newDF))
         except:
             print(start_date)
     return(df)
 
-directory = os.getcwd()
-authorization_key=getLogin(directory)
-df=genHistoricalData()
+def getAgencies():
+    base_url='https://data.usajobs.gov/api/codelist/agencysubelements'
+    results = requests.get(base_url).json()
+    agencies=pd.DataFrame(results['CodeList'][0]['ValidValue'])
+    activeAgencies=agencies.loc[agencies['IsDisabled']=="No"]
+    return(activeAgencies)
+
+def searchAllAgenciesCurrent():
+    directory = os.getcwd()
+    authorization_key=getLogin(directory)
+    agencies=getAgencies()
+    codes=list(agencies['Code'])
+    dfs=[current_search(authorization_key, organization=i) for i in codes]
+    df=pd.concat(dfs, axis=0)
+    dfExtended=pullFieldsFromDict(df)
+    dfExtended.to_excel(os.getcwd().replace("code", "data\currentResults.xlsx"))
+    return(dfExtended)
     
 
-"""
-keyword="data"
-keyword=""
-positiontitle="data scientist"
-#positiontitle=""
-df=main(keyword, positiontitle)
 
+    
 
-
-
-df_old=historical_search(authorization_key)
-#dfExtended=pullFieldsFromDict(df_old)
-
-
-for the historical search, I'm getting 9,000 results (which seems like it should be) 10,000?
-and it's going back to 2016, which is pretty far!
-we could narrow this down via position title and just scrape those
-or we could scrape EVERYTHING
-"""
-
-
+    
+    
