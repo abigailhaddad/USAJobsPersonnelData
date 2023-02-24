@@ -27,8 +27,8 @@ def historical_search(start_date, end_date):
 
 def current_search(authorization_key, keyword="", positiontitle="", organization=""):
     #formats url and makes request to API
+    print(organization)
     number=str(0) 
-    #base_url=f"https://data.usajobs.gov/api/search?PositionTitle={positiontitle}&Keyword={keyword}&Organization={organization}?WhoMayApply=All&p={number}"
     base_url=f"https://data.usajobs.gov/api/Search?Organization={organization}&PositionTitle={positiontitle}&Keyword={keyword}&p={number}"
     results = requests.get(base_url, headers=connect(authorization_key)).json()
     searchResultDF= pd.DataFrame.from_dict(results['SearchResult']['SearchResultItems'])
@@ -125,7 +125,7 @@ def searchAllAgenciesCurrent():
     
 
 
-    
+dfAllAgenciesCurrent=searchAllAgenciesCurrent()    
 
     
     
