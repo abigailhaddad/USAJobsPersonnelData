@@ -23,6 +23,11 @@ def historical_search(start_date, end_date):
     base_url=f'https://data.usajobs.gov/api/historicjoa?PageSize=1000&StartPositionOpenDate={start_date}&EndPositionOpenDate={end_date}&PageNumber={number}'
     results = requests.get(base_url).json()
     searchResultDF= pd.DataFrame.from_dict(results['data'])
+    while results['paging']['next']!=None:
+        nextURL='https://data.usajobs.gov'+ results['paging']['next']
+        results = requests.get(nextURL).json()
+        newDF=pd.DataFrame.from_dict(results['data'])
+        searchResultDF=pd.concat([searchResultDF, newDF])
     return(searchResultDF)
 
 def current_search(authorization_key, keyword="", positiontitle="", organization=""):
@@ -51,13 +56,10 @@ def unpackColumnDict(df, column):
 
 def pullFieldsFromDict(df):
     # we're unpacking the dictionaries in the returned JSON
-    # we keep any column if it's filled in for at least 10% of the rows
-    # only want to unpack dictionaries
     for iteration in range(0, 10):
         for column in df.columns:
             if dict in [type(i) for i in df[column].values]:
                 df=unpackColumnDict(df, column)
-        #df=df.dropna(thresh=round(len(df)/10), axis=1)
         df=df.dropna(how='all', axis=1)
     return(df)
      
@@ -93,13 +95,13 @@ def format_date(string):
 
 def genHistoricalData():
     df=pd.DataFrame()
-    dates=pd.date_range(date(2023,1,1),date(2023,2,1)-timedelta(days=1),freq='d')
+    dates=pd.date_range(date(2023,1,1),date(2023,1,5)-timedelta(days=1),freq='d')
     for i in range(0, len(dates)-1):
         start_date=format_date(str(dates[i]))
         end_date=format_date(str(dates[i+1]))
         try:
             newDF=historical_search(start_date, end_date)
-            df=pd.concat([df, newDF], axis=1)
+            df=pd.concat([df, newDF], axis=0)
             print(len(newDF))
         except:
             print(start_date)
@@ -123,9 +125,8 @@ def searchAllAgenciesCurrent():
     dfExtended.to_excel(os.getcwd().replace("code", "data\currentResults.xlsx"))
     return(dfExtended)
     
+dfAllAgenciesCurrent=searchAllAgenciesCurrent()   
 
+historicalData=genHistoricalData()
 
-dfAllAgenciesCurrent=searchAllAgenciesCurrent()    
-
-    
     
