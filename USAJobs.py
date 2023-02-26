@@ -1,12 +1,23 @@
 # -*- coding: utf-8 -*-
 """
-
-small, new version that just pulls from the updated USAJobs API
+finding:
+    
+    -some but not all of the jobs in the current jobs API are also in the historical jobs API
+    -there is no overlap between the field names in both APIs
+    -it is possible to fetch all historical jobs by going day by day -- but the API breaks a lot
+    -it is possible to fetch all current job by going agency by agency
+    -it is not possible to purely use regular expressions to pull out "R" the programming language, 
+    because there are multiple other contexts where it looks like " R,"
+    but you can narrow down what's likely to be a data job (or just use the new data science occ code)
+    and then look at that
 """
 import requests
 import pandas as pd
 import os
 from datetime import date, timedelta
+from bs4 import BeautifulSoup
+import time
+import quarto
 
 
 def connect(authorization_key):
@@ -18,7 +29,6 @@ def connect(authorization_key):
     
 def historical_search(start_date, end_date):
     #formats url and makes request to API
-    # this will just get 1,000
     number=str(1) 
     base_url=f'https://data.usajobs.gov/api/historicjoa?PageSize=1000&StartPositionOpenDate={start_date}&EndPositionOpenDate={end_date}&PageNumber={number}'
     results = requests.get(base_url).json()
@@ -105,6 +115,8 @@ def genHistoricalData():
             print(len(newDF))
         except:
             print(start_date)
+    df.to_pickle(os.getcwd().replace("code", "data\historicalResults"))
+    df.to_excel(os.getcwd().replace("code", "data\historicalResults.xlsx"))
     return(df)
 
 def getAgencies():
@@ -122,11 +134,59 @@ def searchAllAgenciesCurrent():
     dfs=[current_search(authorization_key, organization=i) for i in codes]
     df=pd.concat(dfs, axis=0)
     dfExtended=pullFieldsFromDict(df)
+    dfExtended.to_pickle(os.getcwd().replace("code", "data\currentResults"))
     dfExtended.to_excel(os.getcwd().replace("code", "data\currentResults.xlsx"))
     return(dfExtended)
-    
-dfAllAgenciesCurrent=searchAllAgenciesCurrent()   
 
-historicalData=genHistoricalData()
+def scrapeURLs(controlNumber):
+    # start with just getting the text
+    time.sleep(3) 
+    url=f'https://www.usajobs.gov/job/{controlNumber}'
+    response = requests.get(url)
+    soup = BeautifulSoup(response.text, 'html.parser')
+    soupText=soup.text.replace("\n","").replace("\r","")
+    return(soupText)
+
+def find1560HistoricalJobs():
+    start_date='01-01-2020'
+    end_date='02-25-2023'
+    number=str(1)
+    base_url=f'https://data.usajobs.gov/api/historicjoa?PageSize=1000&StartPositionOpenDate={start_date}&EndPositionOpenDate={end_date}&PositionSeries=1560&PageNumber={number}'
+    results = requests.get(base_url).json()
+    searchResultDF= pd.DataFrame.from_dict(results['data'])
+    searchResultDF.to_excel(os.getcwd().replace("code", "data\1560Historical.xlsx"))
+    searchResultDF['text']=searchResultDF['usajobsControlNumber'].astype(str).apply(scrapeURLs)
+    searchResultDF.to_excel(os.getcwd().replace("code", "data\1560Historical.xlsx"))
+    return(searchResultDF)
 
     
+#dfAllAgenciesCurrent=searchAllAgenciesCurrent()   
+
+#historicalData=genHistoricalData()
+
+historical1560=find1560HistoricalJobs()
+
+
+historical1560.loc[historical1560['text'].str.contains("Python")]
+pattern = r'(?<=\s)R(?=[\s\W])'
+
+historical1560.loc[historical1560['text'].str.contains(pattern, regex=True)]
+
+
+programs=["SPSS", "SAS", "Stata", "Python", "R", "spark", "pyspark", "git"]
+
+def genPattern(string):
+    lower=string.lower()
+    pattern = f"(?<=\s){lower}(?=[\s\W])"
+    return(pattern)
+
+dictItem={}
+for program in programs:
+    pattern=genPattern(program)
+    dictItem[program]=historical1560.loc[historical1560['text'].str.lower().str.contains(pattern, regex=True)]
+
+
+
+
+
+
