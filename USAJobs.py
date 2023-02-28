@@ -105,7 +105,7 @@ def format_date(string):
 
 def genHistoricalData():
     df=pd.DataFrame()
-    dates=pd.date_range(date(2023,1,1),date(2023,1,5)-timedelta(days=1),freq='d')
+    dates=pd.date_range(date(2022,1,1),date(2023,1,1)-timedelta(days=1),freq='d')
     for i in range(0, len(dates)-1):
         start_date=format_date(str(dates[i]))
         end_date=format_date(str(dates[i+1]))
@@ -159,31 +159,26 @@ def find1560HistoricalJobs():
     searchResultDF.to_excel(os.getcwd().replace("code", "data\1560Historical.xlsx"))
     return(searchResultDF)
 
-    
-#dfAllAgenciesCurrent=searchAllAgenciesCurrent()   
-
-#historicalData=genHistoricalData()
-
-historical1560=find1560HistoricalJobs()
-
-
-historical1560.loc[historical1560['text'].str.contains("Python")]
-pattern = r'(?<=\s)R(?=[\s\W])'
-
-historical1560.loc[historical1560['text'].str.contains(pattern, regex=True)]
-
-
-programs=["SPSS", "SAS", "Stata", "Python", "R", "spark", "pyspark", "git"]
-
 def genPattern(string):
     lower=string.lower()
     pattern = f"(?<=\s){lower}(?=[\s\W])"
     return(pattern)
 
-dictItem={}
-for program in programs:
-    pattern=genPattern(program)
-    dictItem[program]=historical1560.loc[historical1560['text'].str.lower().str.contains(pattern, regex=True)]
+def findPrograms(df):
+    programs=["SPSS", "SAS", "Stata", "Python", "R", "spark", "pyspark", "git"]
+    dictItem={}
+    for program in programs:
+        pattern=genPattern(program)
+        dictItem[program]=df.loc[df['text'].str.lower().str.contains(pattern, regex=True)]
+        return(dictItem)
+
+
+    
+dfAllAgenciesCurrent=searchAllAgenciesCurrent()   
+
+historicalData=genHistoricalData()
+
+historical1560=find1560HistoricalJobs()
 
 
 
