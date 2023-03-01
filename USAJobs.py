@@ -103,9 +103,9 @@ def current_search_all_steps(keyword, positiontitle, organization):
 def format_date(string):
     return(string[5:7]+"-"+string[8:10]+"-"+string[0:4])
 
-def genHistoricalData():
+def genHistoricalDataOnePull(dates):
+    name=genFileName(dates)
     df=pd.DataFrame()
-    dates=pd.date_range(date(2022,1,1),date(2023,1,1)-timedelta(days=1),freq='d')
     for i in range(0, len(dates)-1):
         start_date=format_date(str(dates[i]))
         end_date=format_date(str(dates[i+1]))
@@ -115,8 +115,8 @@ def genHistoricalData():
             print(len(newDF))
         except:
             print(start_date)
-    df.to_pickle(os.getcwd().replace("code", "data\historicalResults"))
-    df.to_excel(os.getcwd().replace("code", "data\historicalResults.xlsx"))
+    df.to_pickle(os.getcwd().replace("code", f"data\{name}"))
+    df.to_excel(os.getcwd().replace("code", f"data\{name}.xlsx"))
     return(df)
 
 def getAgencies():
@@ -172,16 +172,24 @@ def findPrograms(df):
         dictItem[program]=df.loc[df['text'].str.lower().str.contains(pattern, regex=True)]
         return(dictItem)
 
+def genFileName(dates):
+    # this is for the historical data because the memory constraints are a problem, we need to write out periodically
+    name=f'{str(dates[0])[0:10]+ "_to_" + str(dates[-1])[0:10]}_historical_data'
+    return(name)
 
-    
+
+def genHistoricalDataMultiplePulls(first_date, last_date):
+    all_dates=pd.Series(pd.date_range(first_date,last_date-timedelta(days=1),freq='d'))
+    list_by_month=list(all_dates.groupby(all_dates.map(lambda x: x.month)))
+    for dates in list_by_month:
+        genHistoricalDataOnePull(dates[1].values)
+        
+
 dfAllAgenciesCurrent=searchAllAgenciesCurrent()   
-
-historicalData=genHistoricalData()
 
 historical1560=find1560HistoricalJobs()
 
-
-
-
-
+first_date=date(2022, 1, 20)
+last_date=date(2022, 2, 10)
+genHistoricalDataMultiplePulls(first_date, last_date)
 
