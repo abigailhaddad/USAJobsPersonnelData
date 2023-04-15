@@ -14,10 +14,9 @@ finding:
 import requests
 import pandas as pd
 import os
-from datetime import date, timedelta
+from datetime import timedelta
 from bs4 import BeautifulSoup
 import time
-import quarto
 
 
 def connect(authorization_key):
@@ -97,7 +96,7 @@ def current_search_all_steps(keyword, positiontitle, organization):
     df=current_search(authorization_key, keyword, positiontitle, organization)
     dfExtended=pullFieldsFromDict(df)
     dfNoDups=makeListsDups(dfExtended)
-    dfNoDups.to_excel(os.getcwd().replace("code", "data\currentResults.xlsx"))
+    dfNoDups.to_pickle(os.getcwd().replace("code", "../data/currentResults.pkl"))
     return(dfNoDups)
 
 def format_date(string):
@@ -134,7 +133,7 @@ def searchAllAgenciesCurrent():
     dfs=[current_search(authorization_key, organization=i) for i in codes]
     df=pd.concat(dfs, axis=0)
     dfExtended=pullFieldsFromDict(df)
-    dfExtended.to_pickle(os.getcwd().replace("code", "data\currentResults"))
+    dfExtended.to_pickle(os.getcwd().replace("code", "data\currentResults.pkl"))
     dfExtended.to_excel(os.getcwd().replace("code", "data\currentResults.xlsx"))
     return(dfExtended)
 
@@ -177,19 +176,17 @@ def genFileName(dates):
     name=f'{str(dates[0])[0:10]+ "_to_" + str(dates[-1])[0:10]}_historical_data'
     return(name)
 
-
 def genHistoricalDataMultiplePulls(first_date, last_date):
     all_dates=pd.Series(pd.date_range(first_date,last_date-timedelta(days=1),freq='d'))
     list_by_month=list(all_dates.groupby(all_dates.map(lambda x: x.month)))
     for dates in list_by_month:
         genHistoricalDataOnePull(dates[1].values)
         
+def main():
+    # Run a new current jobs search
+    current_data = searchAllAgenciesCurrent()
+    return(current_data)
 
-dfAllAgenciesCurrent=searchAllAgenciesCurrent()   
-
-historical1560=find1560HistoricalJobs()
-
-first_date=date(2022, 1, 20)
-last_date=date(2022, 2, 10)
-genHistoricalDataMultiplePulls(first_date, last_date)
+if __name__ == '__main__':
+   current_data=main()
 
