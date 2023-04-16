@@ -128,7 +128,7 @@ def concatenate_columns(df, columns):
             raise ValueError(f"Column '{column}' not found in the DataFrame.")
 
     # Convert each column to string and concatenate them into a new 'info' column
-    df['info'] = df[columns].apply(' '.join, axis=1)
+    df['info'] = df[columns].astype(str).apply(' '.join, axis=1)
     
     return df
 
@@ -252,10 +252,10 @@ if __name__ == "__main__":
     # Apply the custom function and filter the DataFrame based on the occupation codes
     filtered_data_occ = current_data[current_data['JobCategory'].apply(filter_func)]
     # Filter the DataFrame to include only rows where the 'info' column contains the word "data"
-    jobs_with_data=filtered_data_occ.loc[filtered_data_occ['info'].str.lower().str.contains("data")]
-    # Get a random sample of 30 rows from the filtered DataFrame
-    sample=sampleData(jobs_with_data)  
-    # Process the sample DataFrame using the GPT engine and return the final DataFrame with additional columns
+    jobs_with_data = filtered_data_occ.loc[filtered_data_occ['info'].str.lower().str.count("data") >= 2]
+    # Get a random sample of 1000 rows from the filtered DataFrame
+    sample=sampleData(jobs_with_data, 1000)  
+    # Process the  DataFrame using the GPT engine and return the final DataFrame with additional columns
     df=gpt_calls(sample)
     # Define the columns to be kept and written out
     keepCols=['occupation', 'job_duties', 'job_qualifications', 'PositionURI','PositionLocation', 'OrganizationName', 'DepartmentName','PositionRemuneration','ApplicationCloseDate', 'HiringPath', 'PositionTitle']
