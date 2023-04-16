@@ -11,10 +11,13 @@ import dash_bootstrap_components as dbc
 import dash_core_components as dcc
 import dash_html_components as html
 import pandas as pd
+from dash.dependencies import Input, Output, State
 
 # Load your DataFrame
 df = pd.read_csv("/home/abigailhaddad1/projects/USAJobs/data/selected_cols_cleaned.csv")
 df["Close Date"]=pd.to_datetime(df['Close Date'])
+df["Min_salary"]=df["Min_salary"].astype(int)
+df["Max_salary"]=df["Max_salary"].astype(int)
 
 external_stylesheets = [dbc.themes.BOOTSTRAP]
 
@@ -33,6 +36,26 @@ def generate_tooltip_data(df):
     return tooltip_data
 
 tooltip_data = generate_tooltip_data(df)
+lowest_min_salary = int(df['Min_salary'].min() // 10000) * 10000
+highest_max_salary = int((df['Max_salary'].max() + 9999) // 10000) * 10000
+
+@app.callback(
+    Output('table', 'data'),
+    Input('salary-range-slider', 'value'),
+    Input('date-range-slider', 'value')
+)
+def filter_data(salary_range, date_range):
+    dff = df.copy()
+
+    # Filter by salary range
+    min_salary, max_salary = salary_range
+    dff = dff[((dff['min_salary'] <= max_salary) & (dff['max_salary'] >= min_salary))]
+
+    # Filter by date range
+    min_date, max_date = pd.to_datetime(date_range, unit='s')
+    dff = dff[(dff['Close Date'] >= min_date) & (dff['Close Date'] <= max_date)]
+
+    return dff.to_dict('records')
 
 
 app.layout = html.Div([
@@ -41,12 +64,12 @@ app.layout = html.Div([
         html.Label('Filter by Salary Range:'),
         dcc.RangeSlider(
             id='salary-range-slider',
-            min=0,
-            max=200000,
+            min=lowest_min_salary,
+            max=highest_max_salary,
             step=1000,
-            value=[30000, 100000],
-            marks={i: f'${i:,}' for i in range(0, 200001, 20000)},
-        ),
+            value=[lowest_min_salary, highest_max_salary],
+            marks={i: f'${i:,}' for i in range(lowest_min_salary, highest_max_salary + 1, 20000)},
+            ),
         html.Div(id='slider-output-container')
     ]),
     html.Div([
