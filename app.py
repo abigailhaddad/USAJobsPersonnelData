@@ -49,8 +49,8 @@ highest_max_salary = int((df['Max_salary'].max() + 9999) // 10000) * 10000
 def filter_data(salary_range, date_range):
     dff = df.copy()
 
-    # Convert 'Close Date' back to datetime objects
-    dff["Close Date"] = pd.to_datetime(dff["Close Date"])
+    # Create a new 'Close Date Datetime' column with datetime objects
+    dff["Close Date Datetime"] = pd.to_datetime(dff["Close Date"])
 
     # Filter by salary range
     min_salary, max_salary = salary_range
@@ -58,9 +58,13 @@ def filter_data(salary_range, date_range):
 
     # Filter by date range
     min_date, max_date = pd.to_datetime(date_range, unit='s')
-    dff = dff[(dff['Close Date'] >= min_date) & (dff['Close Date'] <= max_date)]
+    dff = dff[(dff['Close Date Datetime'] >= min_date) & (dff['Close Date Datetime'] <= max_date)]
+
+    # Remove the 'Close Date Datetime' column
+    dff = dff.drop(columns=['Close Date Datetime'])
 
     return dff.to_dict('records')
+
 
 
 
