@@ -8,6 +8,7 @@ Created on Sun Apr  9 18:22:00 2023
 import openai
 import pandas as pd
 import pickle
+import numpy as np
 
 # Load the API key from the file (change this to reflect where you've put 
 # your API key)
@@ -238,6 +239,20 @@ def read_data_from_file(file_path):
         data = pickle.load(file)
     return data
 
+def findMetrics(df):
+    # some metrics around results
+    df['Yes_or_No']=np.where(df['occupation'].str[0:3]=="Yes","Yes", "No")
+    # what percent got classified as data science?
+    print(df['Yes_or_No'].value_counts(normalize=True))
+    # how many of them have 'data sci' in them?
+    df['has_data_sci']=np.where(df['info'].str.lower().str.contains("data sci"), "data sci", "not")
+    print(pd.crosstab(df['Yes_or_No'],df['has_data_sci'] ))
+    # examples of yesses without 'data sci'
+    yes_no_data_sci=df.loc[(df['has_data_sci']=="not") & (df['Yes_or_No']=="Yes")]
+    # random 5
+    yes_no_data_sci.sample(5)[["PositionTitle","occupation" ]].to_excel("5 selected data sci jobs without data sci.xlsx")
+    
+
 if __name__ == "__main__":
     # Read the data from the specified file
     current_data = read_data_from_file("../data/currentResults.pkl")
@@ -258,6 +273,8 @@ if __name__ == "__main__":
     # Process the  DataFrame using the GPT engine and return the final DataFrame with additional columns
     df=gpt_calls(sample)
     # Define the columns to be kept and written out
-    keepCols=['occupation', 'job_duties', 'job_qualifications', 'PositionURI','PositionLocation', 'OrganizationName', 'DepartmentName','PositionRemuneration','ApplicationCloseDate', 'HiringPath', 'PositionTitle']
+    keepCols=['PositionTitle', 'DepartmentName', 'OrganizationName', 'occupation', 'job_duties', 'job_qualifications', 'PositionURI','PositionLocation', 'PositionRemuneration','ApplicationCloseDate', 'HiringPath']
     # Write out the file to Excel
     df[keepCols].to_excel("../data/selected_cols.xlsx", index=False)
+    df[keepCols].to_csv("../data/selected_cols.csv", index=False)
+    findMetrics(df)

@@ -41,7 +41,7 @@ This script scrapes federal job listings from the USAJOBS API. It filters the li
 
 ### **job_classifier.py**
 
-This script reads the scraped job listings from the pickle file, concatenates specific columns into a new 'info' column, and filters the listings based on occupation codes. It further filters the listings by checking if they contain the word "data", takes a random sample of 30 rows, and processes them using OpenAI GPT-3.5-turbo to classify their relevance to data science. The script then extracts additional information such as job duties and qualifications and saves the results in an Excel file.
+This script reads the scraped job listings from the pickle file, concatenates specific columns into a new 'info' column, and filters the listings based on occupation codes. It further filters the listings by checking if they contain the word "data", takes a random sample of 1,000 rows, and processes them using OpenAI GPT-3.5-turbo to classify their relevance to data science. The script then extracts additional information such as job duties and qualifications and saves the results in an Excel file.
 
 
 ## **Dependencies**
