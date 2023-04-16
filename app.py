@@ -15,7 +15,9 @@ from dash.dependencies import Input, Output, State
 
 # Load your DataFrame
 df = pd.read_csv("/home/abigailhaddad1/projects/USAJobs/data/selected_cols_cleaned.csv")
-df["Close Date"]=pd.to_datetime(df['Close Date'])
+df["Close Date"]=pd.to_datetime(df['Close Date']).dt.strftime('%Y-%m-%d')
+min_timestamp = int(pd.to_datetime(df['Close Date']).min().timestamp())
+max_timestamp = int(pd.to_datetime(df['Close Date']).max().timestamp())
 df["Min_salary"]=df["Min_salary"].astype(int)
 df["Max_salary"]=df["Max_salary"].astype(int)
 
@@ -47,15 +49,19 @@ highest_max_salary = int((df['Max_salary'].max() + 9999) // 10000) * 10000
 def filter_data(salary_range, date_range):
     dff = df.copy()
 
+    # Convert 'Close Date' back to datetime objects
+    dff["Close Date"] = pd.to_datetime(dff["Close Date"])
+
     # Filter by salary range
     min_salary, max_salary = salary_range
-    dff = dff[((dff['min_salary'] <= max_salary) & (dff['max_salary'] >= min_salary))]
+    dff = dff[((dff['Min_salary'] <= max_salary) & (dff['Max_salary'] >= min_salary))]
 
     # Filter by date range
     min_date, max_date = pd.to_datetime(date_range, unit='s')
     dff = dff[(dff['Close Date'] >= min_date) & (dff['Close Date'] <= max_date)]
 
     return dff.to_dict('records')
+
 
 
 app.layout = html.Div([
@@ -76,13 +82,12 @@ app.layout = html.Div([
         html.Label('Filter by Close Date Range:'),
         dcc.RangeSlider(
             id='date-range-slider',
-            min=int(df['Close Date'].min().timestamp()),
-            max=int(df['Close Date'].max().timestamp()),
+            min=min_timestamp,
+            max=max_timestamp,
             step=86400,  # One day step size
             value=[
-                int(df['Close Date'].min().timestamp()),
-                int(df['Close Date'].max().timestamp())
-            ],
+                min_timestamp,
+                max_timestamp],
             marks={
                 int(ts.timestamp()): ts.strftime('%Y-%m-%d')
                 for ts in pd.date_range(df['Close Date'].min(), df['Close Date'].max(), freq='1M')
