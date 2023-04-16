@@ -95,8 +95,7 @@ def current_search_all_steps(keyword, positiontitle, organization):
     authorization_key=getLogin(directory)
     df=current_search(authorization_key, keyword, positiontitle, organization)
     dfExtended=pullFieldsFromDict(df)
-    colsToKeep= ["QualificationSummary", "JobSummary", "MajorDuties", "Education", "Evaluations", 'PositionURI','PositionLocation', 'OrganizationName', 'DepartmentName','PositionRemuneration','ApplicationCloseDate', 'HiringPath', 'PositionTitle', 'JobCategory']
-    dfNoDups=makeListsDups(dfExtended)[colsToKeep]
+    dfNoDups=makeListsDups(dfExtended)
     dfNoDups.to_pickle(os.getcwd().replace("code", "../data/currentResults.pkl"))
     return(dfNoDups)
 
@@ -136,6 +135,8 @@ def searchAllAgenciesCurrent():
     dfExtended=pullFieldsFromDict(df)
     dfExtended.to_pickle(os.getcwd().replace("code", "data\currentResults.pkl"))
     dfExtended.to_excel(os.getcwd().replace("code", "data\currentResults.xlsx"))
+    colsToKeep= ["QualificationSummary", "JobSummary", "MajorDuties", "Education", "Evaluations", 'PositionURI','PositionLocation', 'OrganizationName', 'DepartmentName','PositionRemuneration','ApplicationCloseDate', 'HiringPath', 'PositionTitle', 'JobCategory']
+    dfExtended[colsToKeep].to_pickle(os.getcwd().replace("code", "data\currentResultsColSubset.pkl"))
     return(dfExtended)
 
 def scrapeURLs(controlNumber):
