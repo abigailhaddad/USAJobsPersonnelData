@@ -13,15 +13,17 @@ import dash_html_components as html
 import pandas as pd
 
 # Load your DataFrame
-df = pd.read_excel("../data/selected_cols.xlsx")
+df = pd.read_csv("/home/abigailhaddad1/projects/USAJobs/data/selectedCols.csv")
 
 external_stylesheets = [dbc.themes.BOOTSTRAP]
 
-app = dash.Dash(__name__, external_stylesheets=external_stylesheets, server_name="abigailhaddad1.pythonanywhere.com")
+app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
+server = app.server  # Add this line
 
 app.layout = html.Div([
-    html.H1('Your Interactive DataFrame'),
+    html.H1('Selection of USAJobs Listings'),
     dash_table.DataTable(
+        column_selectable='multi',
         id='table',
         columns=[{"name": i, "id": i} for i in df.columns],
         data=df.to_dict('records'),
