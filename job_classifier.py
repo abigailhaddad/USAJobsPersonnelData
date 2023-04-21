@@ -9,6 +9,7 @@ import openai
 import pandas as pd
 import pickle
 import numpy as np
+from typing import List, Tuple, Any
 
 # Load the API key from the file (change this to reflect where you've put 
 # your API key)
@@ -184,7 +185,6 @@ def gpt_calls(sample):
         response_1= process_prompt(prompt_1, engine, temperature)
         results_prompt_1.append(response_1)
 
-    # Append the results as new columns 'results' and 'results_2' in the dataframe
     sample['occupation'] = results_prompt_1
 
     # Filter the dataframe to only include rows where the response starts with "Yes"
@@ -234,24 +234,97 @@ def sampleData(data, n=30):
     return(random_sample)
 
 
-def read_data_from_file(file_path):
+def read_data_from_file(file_path: str) -> Any:
+    """
+    Reads data from the specified file path.
+
+    Args:
+        file_path (str): The path of the file to read the data from.
+
+    Returns:
+        Any: The data read from the file.
+    """
     with open(file_path, 'rb') as file:
         data = pickle.load(file)
     return data
 
-def findMetrics(df):
-    # some metrics around results
-    df['Yes_or_No']=np.where(df['occupation'].str[0:3]=="Yes","Yes", "No")
-    # what percent got classified as data science?
+
+def find_metrics(df: pd.DataFrame) -> None:
+    """
+    Finds and prints several metrics from the given DataFrame.
+
+    Args:
+        df (pd.DataFrame): The input DataFrame to analyze.
+    """
+    df['Yes_or_No'] = np.where(df['occupation'].str[0:3] == "Yes", "Yes", "No")
+
+    # What percent got classified as data science?
     print(df['Yes_or_No'].value_counts(normalize=True))
-    # how many of them have 'data sci' in them?
-    df['has_data_sci']=np.where(df['info'].str.lower().str.contains("data sci"), "data sci", "not")
-    print(pd.crosstab(df['Yes_or_No'],df['has_data_sci'] ))
-    # examples of yesses without 'data sci'
-    yes_no_data_sci=df.loc[(df['has_data_sci']=="not") & (df['Yes_or_No']=="Yes")]
-    # random 5
-    yes_no_data_sci.sample(5)[["PositionTitle","occupation" ]].to_excel("5 selected data sci jobs without data sci.xlsx")
-    
+
+    # How many of them have 'data sci' in them?
+    df['has_data_sci'] = np.where(df['info'].str.lower().str.contains("data sci"), "data sci", "not")
+    print(pd.crosstab(df['Yes_or_No'], df['has_data_sci']))
+
+    # Examples of yesses without 'data sci'
+    yes_no_data_sci = df.loc[(df['has_data_sci'] == "not") & (df['Yes_or_No'] == "Yes")]
+
+    # Random 5
+    yes_no_data_sci.sample(5)[["PositionTitle", "occupation"]].to_excel("5 selected data sci jobs without data sci.xlsx")
+    pure_data_sci = yes_no_data_sci = df.loc[(df['has_data_sci'] != "not")]
+    print(len(pure_data_sci))
+
+
+def extract_min_max(salary_list: List[dict]) -> Tuple[float, float]:
+    """
+    Extracts the minimum and maximum salary values from the given salary list.
+
+    Args:
+        salary_list (List[dict]): A list of dictionaries containing salary information.
+
+    Returns:
+        Tuple[float, float]: The minimum and maximum salary values, or None for both if the list is empty.
+    """
+    if len(salary_list) > 0:
+        min_salary = float(salary_list[0]['MinimumRange'])
+        max_salary = float(salary_list[0]['MaximumRange'])
+    else:
+        min_salary, max_salary = None, None
+    return min_salary, max_salary
+
+
+def extract_location_names(location_list: List[dict]) -> str:
+    """
+    Extracts the location names from the given location list.
+
+    Args:
+        location_list (List[dict]): A list of dictionaries containing location information.
+
+    Returns:
+        str: A string containing the extracted location names, separated by semicolons.
+    """
+    location_names = [location['LocationName'] for location in location_list]
+    return '; '.join(location_names)
+
+
+def clean_for_app(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Cleans the given DataFrame to keep only the necessary columns and formats the data for the application.
+
+    Args:
+        df (pd.DataFrame): The input DataFrame to clean.
+
+    Returns:
+        pd.DataFrame: The cleaned DataFrame with only the necessary columns.
+    """
+    df['Close Date'] = pd.to_datetime(df['ApplicationCloseDate'], errors='coerce').dt.strftime('%m-%d-%Y')
+    df['Min_salary'], df['Max_salary'] = zip(*df['PositionRemuneration'].apply(extract_min_max))
+    df['Location'] = df['PositionLocation'].apply(extract_location_names)
+    keep_cols = ['PositionTitle', 'DepartmentName', 'OrganizationName',
+                 'occupation', 'job_duties', 'job_qualifications', 'PositionURI',
+                 'HiringPath', 'Close Date', 'Min_salary', 'Max_salary',
+                 'Location']
+    return df[keep_cols]
+
 
 if __name__ == "__main__":
     # Read the data from the specified file
@@ -269,12 +342,10 @@ if __name__ == "__main__":
     # Filter the DataFrame to include only rows where the 'info' column contains the word "data"
     jobs_with_data = filtered_data_occ.loc[filtered_data_occ['info'].str.lower().str.count("data") >= 2]
     # Get a random sample of 1000 rows from the filtered DataFrame
-    sample=sampleData(jobs_with_data, 1000)  
+    sample=sampleData(jobs_with_data, 20)  
     # Process the  DataFrame using the GPT engine and return the final DataFrame with additional columns
     df=gpt_calls(sample)
     # Define the columns to be kept and written out
-    keepCols=['PositionTitle', 'DepartmentName', 'OrganizationName', 'occupation', 'job_duties', 'job_qualifications', 'PositionURI','PositionLocation', 'PositionRemuneration','ApplicationCloseDate', 'HiringPath']
-    # Write out the file to Excel
-    df[keepCols].to_excel("../data/selected_cols.xlsx", index=False)
-    df[keepCols].to_csv("../data/selected_cols.csv", index=False)
-    findMetrics(df)
+    #find_metrics(df)
+    cleaned_for_app=clean_for_app(df)   
+    cleaned_for_app.to_pickle("../data/file_for_app_sample.pkl")
