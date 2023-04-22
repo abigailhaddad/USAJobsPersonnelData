@@ -394,8 +394,9 @@ def main():
     # Define the columns to be kept and written out
     # find_metrics(data_frame)
     cleaned_for_app = clean_for_app(data_frame)
+    cleaned_for_app.to_pickle("../data/file_for_app_sample.pkl")
     return(cleaned_for_app)
     
 if __name__ == "__main__":
     cleaned_for_app=main()
-    cleaned_for_app.to_pickle("../data/file_for_app_sample.pkl")
+    

@@ -154,11 +154,11 @@ def main() -> pd.DataFrame:
     """
     current_data = search_all_agencies_current()
     current_data_unpacked=pull_fields_from_dict(current_data)
+    current_data_unpacked.to_pickle("../data/currentResults.pkl")
     return current_data_unpacked
 
 
 if __name__ == "__main__":
-    current_data_from_function = main()
-    current_data_from_function.to_pickle("../data/currentResults.pkl")
+    current_data_from_function = main()   
     print(current_data_from_function.head())
     
