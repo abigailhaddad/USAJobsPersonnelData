@@ -368,8 +368,7 @@ def filter_func(x, list_of_occupations):
     """
     return any(code in [entry['Code'] for entry in x] for code in list_of_occupations)
 
-if __name__ == "__main__":
-    # Read the data from the specified file
+def main():
     current_data = read_data_from_file("../data/currentResults.pkl")
     # Define the columns to be concatenated
     columns = [
@@ -400,4 +399,8 @@ if __name__ == "__main__":
     # Define the columns to be kept and written out
     # find_metrics(data_frame)
     cleaned_for_app = clean_for_app(data_frame)
+    return(cleaned_for_app)
+    
+if __name__ == "__main__":
+    cleaned_for_app=main()
     cleaned_for_app.to_pickle("../data/file_for_app_sample.pkl")
