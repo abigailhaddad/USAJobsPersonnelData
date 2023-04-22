@@ -205,14 +205,8 @@ def gpt_calls(sample: pd.DataFrame) -> pd.DataFrame:
 
         for _, row in sample_filtered.iterrows():
             prompt = f"Here is the job listing again: {row['info']} {prompt_text}"
-            messages = [
-                {"role": "user", "content": row['occupation']},
-                {"role": "assistant", "content": "Yes, I understand the context of the job listing."},
-                {"role": "user", "content": prompt}
-            ]
-            response = openai.ChatCompletion.create(
-                model=engine, messages=messages, max_tokens=1024, temperature=temperature)
-            prompt_results.append(response.choices[0]['message']['content'])
+            response = process_prompt(prompt, engine, temperature)
+            prompt_results.append(response)
 
         # Add the results as a new column in the filtered dataframe
         sample_filtered[prompt_key] = prompt_results
@@ -222,6 +216,7 @@ def gpt_calls(sample: pd.DataFrame) -> pd.DataFrame:
     yes_and_no = sample_nos.append(sample_filtered)
 
     return yes_and_no
+
 
 
 def sample_data(data, n=30):
@@ -392,7 +387,7 @@ def main():
     jobs_with_data = filtered_data_occ.loc[filtered_data_occ['info'].str.lower(
     ).str.count("data") >= 2]
     # Get a random sample of 1000 rows from the filtered DataFrame
-    sample = sample_data(jobs_with_data, 20)
+    sample = sample_data(jobs_with_data, 1000)
     # Process the  DataFrame using the GPT engine and return the final
     # DataFrame with additional columns
     data_frame = gpt_calls(sample)
