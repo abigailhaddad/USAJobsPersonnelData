@@ -154,6 +154,7 @@ def main() -> pd.DataFrame:
     """
     current_data = search_all_agencies_current()
     current_data_unpacked=pull_fields_from_dict(current_data)
+    current_data_unpacked=current_data_unpacked.drop_duplicates(subset=['MatchedObjectId','PositionURI'])
     current_data_unpacked.to_pickle("../data/currentResults.pkl")
     return current_data_unpacked
 

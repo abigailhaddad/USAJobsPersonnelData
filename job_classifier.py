@@ -250,35 +250,6 @@ def read_data_from_file(file_path: str) -> Any:
     return data
 
 
-def find_metrics(data_frame: pd.DataFrame) -> None:
-    """
-    Finds and prints several metrics from the given DataFrame.
-
-    Args:
-        data_frame (pd.DataFrame): The input DataFrame to analyze.
-    """
-    data_frame['Yes_or_No'] = np.where(data_frame['occupation'].str[0:3] == "Yes", "Yes", "No")
-
-    # What percent got classified as data science?
-    print(data_frame['Yes_or_No'].value_counts(normalize=True))
-
-    # How many of them have 'data sci' in them?
-    data_frame['has_data_sci'] = np.where(
-        data_frame['info'].str.lower().str.contains("data sci"),
-        "data sci",
-        "not")
-    print(pd.crosstab(data_frame['Yes_or_No'], data_frame['has_data_sci']))
-
-    # Examples of yesses without 'data sci'
-    yes_no_data_sci = data_frame.loc[(data_frame['has_data_sci'] == "not")
-                             & (data_frame['Yes_or_No'] == "Yes")]
-
-    # Random 5
-    yes_no_data_sci.sample(5)[["PositionTitle", "occupation"]].to_excel(
-        "5 selected data sci jobs without data sci.xlsx")
-    pure_data_sci = yes_no_data_sci = data_frame.loc[(data_frame['has_data_sci'] != "not")]
-    print(len(pure_data_sci))
-
 
 def extract_min_max(salary_list: List[dict]) -> Tuple[float, float]:
     """
@@ -386,17 +357,12 @@ def main():
     # contains the word "data"
     jobs_with_data = filtered_data_occ.loc[filtered_data_occ['info'].str.lower(
     ).str.count("data") >= 2]
-    # Get a random sample of 1000 rows from the filtered DataFrame
-    sample = sample_data(jobs_with_data, 1000)
     # Process the  DataFrame using the GPT engine and return the final
     # DataFrame with additional columns
-    data_frame = gpt_calls(sample)
+    data_frame = gpt_calls(jobs_with_data)
+    data_frame.to_pickle("../data/all_cols_sample.pkl")
     # Define the columns to be kept and written out
-    # find_metrics(data_frame)
     cleaned_for_app = clean_for_app(data_frame)
     cleaned_for_app.to_pickle("../data/file_for_app_sample.pkl")
     return(cleaned_for_app)
-    
-if __name__ == "__main__":
-    cleaned_for_app=main()
-    
+
